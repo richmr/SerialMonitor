@@ -30,6 +30,7 @@ Flutter desktop app (Dart) for macOS and Windows.
 
 Needs Flutter 3.22 or newer, plus Xcode and CocoaPods on macOS or Visual
 Studio with "Desktop development with C++" on Windows.
+New to Flutter on a Mac? See [docs/MAC_SETUP.md](docs/MAC_SETUP.md).
 
 ```sh
 tool/bootstrap.sh                                               # macOS
