@@ -1,0 +1,24 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.vscode/
+.DS_Store
+
+# macOS runner
+macos/Flutter/ephemeral/
+macos/Pods/
+macos/.symlinks/
+**/xcuserdata/
+
+# Windows runner
+windows/flutter/ephemeral/
+
+# PlatformIO
+.pio/
