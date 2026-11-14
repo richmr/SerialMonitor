@@ -1,0 +1,9 @@
+{
+  "smp": 1,
+  "name": "smp-basic",
+  "commands": [
+    { "name": "led", "args": "<on|off>", "desc": "Switch the on-board LED", "example": "led on" },
+    { "name": "rate", "args": "<ms>", "desc": "Set the report period", "example": "rate 100" },
+    { "name": "?", "desc": "Ask the device to describe itself" }
+  ]
+}

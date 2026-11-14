@@ -1,0 +1,8 @@
+{
+  "name": "SerialMonitorProtocol",
+  "version": "0.1.0",
+  "description": "SMP v1: tagged serial lines and self-describing commands for the SerialMonitor desktop app.",
+  "frameworks": "arduino",
+  "platforms": "*",
+  "headers": "smp.h"
+}
