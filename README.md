@@ -1,0 +1,105 @@
+# Serial Monitor
+
+A serial monitor for ESP32 development that keeps **one row per kind of
+message** and updates it in place, instead of scrolling everything past you.
+Flutter desktop app (Dart) for macOS and Windows.
+
+> **Status: first version, not yet compiled.** The Dart code was written
+> without a Flutter toolchain available, so expect to fix a few analyzer
+> errors on the first `flutter run`. The ESP32 helper library was compiled
+> and run against a mock Arduino core. Run `flutter test` first.
+
+## What it does
+
+- **Aggregate view.** Lines of the same kind share a row: the latest text
+  replaces the previous one and `(count)` in front shows how many have
+  arrived. Rows stay where they first appeared and flash briefly on update.
+- **Grouping.** By `[tag]` if the firmware uses the protocol below;
+  otherwise by ESP-IDF tag, arduino-esp32 `file:line`, or by the line's
+  shape (numbers ignored), so `Temp: 23.5` and `Temp: 23.7` are one row.
+- **Click a row** to open the log of every arrival of that message.
+- **Click a value** in that panel to graph it over time (the chart icon on a
+  row is a shortcut to its first value).
+- **Timestamps.** Hover a row for its last arrival, hover a log line for
+  that line's arrival; the clock button shows them inline everywhere.
+- **Command box.** Type and press Enter. Autocomplete and the picker button
+  are filled from commands the device announces or from a protocol file.
+- **Survives re-flashing.** See below.
+
+## Setup (once per machine)
+
+Needs Flutter 3.22 or newer, plus Xcode and CocoaPods on macOS or Visual
+Studio with "Desktop development with C++" on Windows.
+
+```sh
+tool/bootstrap.sh                                               # macOS
+powershell -ExecutionPolicy Bypass -File tool\bootstrap.ps1     # Windows
+```
+
+This runs `flutter create` to generate the `macos/` and `windows/` runner
+folders (commit them afterwards) and, on macOS, turns off the App Sandbox so
+the app can open serial devices. Then:
+
+```sh
+flutter test
+flutter run -d macos      # or: -d windows
+```
+
+## ESP32 defaults
+
+115200 baud, 8N1, no flow control, DTR and RTS asserted (which leaves the
+auto-reset circuit idle). USB ports with Espressif, CP210x, CH340 or FTDI
+vendor IDs are listed first and one is preselected. The restart button
+pulses EN through RTS. Baud, DTR and RTS can be changed from the toolbar.
+
+## Re-flashing while the monitor is open
+
+Three things work together:
+
+1. **Auto-reconnect.** If the port disappears or errors (reset, unplug, a
+   native-USB board re-enumerating), the monitor shows "Waiting for device…"
+   and reopens the port as soon as it can, retrying twice a second.
+2. **Upload hook.** A USB-UART bridge (CP210x / CH340) never disappears, and
+   on Windows only one program can hold a COM port, so the uploader needs the
+   monitor to let go. Add this to the firmware project's `platformio.ini`:
+
+   ```ini
+   extra_scripts = post:/path/to/SerialMonitor/tool/pio_smp_hook.py
+   ```
+
+   Before `pio run -t upload` it asks the monitor (TCP `127.0.0.1:47800`) to
+   release the port, and afterwards to take it back. If the upload fails and
+   never says "resume", the monitor takes the port back after 120 s.
+3. **Manual release.** The pause button does the same by hand.
+
+Rows not seen since the device restarted are dimmed; "Clear rows when the
+device restarts" in the menu removes them instead.
+
+## Protocol
+
+[docs/PROTOCOL.md](docs/PROTOCOL.md) defines SMP v1: `[tag] key=value …`
+lines from the device, plain command lines to it, and `[!hello]` / `[!cmd]`
+lines that let the device announce its commands.
+
+`esp32/SerialMonitorProtocol/src/smp.h` is a header-only helper for firmware;
+`esp32/examples/basic` is a PlatformIO example that uses it. To use it in
+another project, copy `smp.h` or add
+`lib_deps = symlink:///path/to/SerialMonitor/esp32/SerialMonitorProtocol`.
+
+## Layout
+
+```
+lib/protocol/   line parser, protocol file model          (pure Dart)
+lib/model/      message store: groups, logs, value series
+lib/serial/     session (reconnect logic), libserialport backend, upload-hook server
+lib/ui/         aggregate view, detail panel, chart, command bar, toolbar
+test/           parser, store, session (with a fake port), UI smoke test
+tool/           bootstrap scripts, PlatformIO upload hook
+esp32/          firmware helper library and example
+```
+
+## Not in this version
+
+Saved settings (port, baud, window), keyboard history in the command box,
+several values on one chart, export of logs, and matching a re-enumerated
+device that comes back under a different port name.
