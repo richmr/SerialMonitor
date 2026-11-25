@@ -1,5 +1,5 @@
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../app_controller.dart';
 import '../serial/session.dart';
@@ -192,7 +192,7 @@ class _StatusLabel extends StatelessWidget {
     final error = session.lastError;
     final showError = error != null && session.state != LinkState.connected && session.state != LinkState.released;
     return Tooltip(
-      message: showError ? '$error' : text,
+      message: showError ? error : text,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
