@@ -1,0 +1,19 @@
+{
+  "smp": 1,
+  "name": "smp-testbench",
+  "commands": [
+    { "name": "?", "desc": "Ask the device to describe itself" },
+    { "name": "help", "desc": "List commands (same as ?)" },
+    { "name": "status", "desc": "Print current settings" },
+    { "name": "sine", "args": "<on|off>", "desc": "Enable/disable the sine wave", "example": "sine off" },
+    { "name": "ramp", "args": "<on|off>", "desc": "Enable/disable the ramp waves", "example": "ramp off" },
+    { "name": "waves", "args": "<on|off>", "desc": "Enable/disable all waves", "example": "waves on" },
+    { "name": "period", "args": "<sine|ramp> <ms>", "desc": "Set a wave's period", "example": "period sine 1000" },
+    { "name": "rate", "args": "<ms>", "desc": "Set the wave sample interval", "example": "rate 20" },
+    { "name": "logs", "args": "<on|off>", "desc": "Enable/disable the level demo lines", "example": "logs off" },
+    { "name": "info", "args": "<on|off>", "desc": "Enable/disable the aggregation demo lines", "example": "info off" },
+    { "name": "burst", "args": "<n>", "desc": "Send n lines at once", "example": "burst 100" },
+    { "name": "fail", "desc": "Reply with an error" },
+    { "name": "reboot", "desc": "Restart the device" }
+  ]
+}

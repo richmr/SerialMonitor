@@ -83,7 +83,10 @@ lines from the device, plain command lines to it, and `[!hello]` / `[!cmd]`
 lines that let the device announce its commands.
 
 `esp32/SerialMonitorProtocol/src/smp.h` is a header-only helper for firmware;
-`esp32/examples/basic` is a PlatformIO example that uses it. To use it in
+`esp32/examples/basic` is a PlatformIO example that uses it.
+`esp32/examples/testbench` is test firmware that exercises every feature
+(graphable waves, all log levels, row grouping in each format, commands,
+restarts); load `examples/testbench.smp.json` with it. To use it in
 another project, copy `smp.h` or add
 `lib_deps = symlink:///path/to/SerialMonitor/esp32/SerialMonitorProtocol`.
 
