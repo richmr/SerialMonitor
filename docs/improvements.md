@@ -1,7 +1,3 @@
-- Change (slide) the window divider between the aggregate serial and the log stream/plot preview window
-- right click context menu delete a log line from the aggregate display
-- Ability to save the serial stream
-- Toggle visible time stamps on the log detail window
 - Pop out window for plotting.
     - Workflow: User clicks a line in the aggregrate to push it to the side window. (as per current)
     - User clicks the variable to enable the plot (as per current)
@@ -14,7 +10,6 @@
     - Button to reset to last time view
     - Button to go back to realtime view
     - Ability to save plot settings, perhaps automatically loaded when the device matches one we connected to before (from that "connected" line at top of window)
-- In the command list, mousing over a command should show the full text. Currently it gets cut off and you can't see it until you select it
-- Perhaps have the monitor always send a ? once its clear the connected device uses the monitor protocol so that commands are always loaded by default.
-- Add traditional font zoom shortcuts (Cmd +/- on a Mac, generally)
-
+- Proper docking/application icon
+- Packaged runnable binary
+- Steps to build and package for Windows.
