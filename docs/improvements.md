@@ -1,0 +1,20 @@
+- Change (slide) the window divider between the aggregate serial and the log stream/plot preview window
+- right click context menu delete a log line from the aggregate display
+- Ability to save the serial stream
+- Toggle visible time stamps on the log detail window
+- Pop out window for plotting.
+    - Workflow: User clicks a line in the aggregrate to push it to the side window. (as per current)
+    - User clicks the variable to enable the plot (as per current)
+    - Then a button to open a seperate window with the plot
+    - If that window is already active, ADDS the line to the plot (sets a secondary Y scale if needed/possible to allow ease of overlay)
+    - Ability to show/hide and remove variables from the plot
+    - Allows scrolling back in time (and holds the view even as new data added to the real time)
+    - Window time size is selectable: 10s, 30s, 1m, 5m, 20m so that clicking the scroll bar moves in those increments.
+    - Allow click and drag to time select a time band to zoom in on
+    - Button to reset to last time view
+    - Button to go back to realtime view
+    - Ability to save plot settings, perhaps automatically loaded when the device matches one we connected to before (from that "connected" line at top of window)
+- In the command list, mousing over a command should show the full text. Currently it gets cut off and you can't see it until you select it
+- Perhaps have the monitor always send a ? once its clear the connected device uses the monitor protocol so that commands are always loaded by default.
+- Add traditional font zoom shortcuts (Cmd +/- on a Mac, generally)
+
