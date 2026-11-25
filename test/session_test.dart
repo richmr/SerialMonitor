@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -224,6 +225,87 @@ void main() {
       expect(error, isNull);
       expect(app.commands.map((c) => c.name), <String>['led', 'move']);
       expect(app.loadProtocol('bad.json', 'nope'), isNotNull);
+    });
+
+    test('an SMP device is asked for its commands once per connection', () {
+      transport.emit('[env] temp=21.0C\n[env] temp=21.1C\n');
+      expect(transport.written, <String>['?\n']);
+      expect(app.history, isEmpty, reason: 'the automatic ? is not command history');
+
+      // The answer is a describe reply, not a restart.
+      transport.emit('[!hello] smp=1 name="Bench"\n[!cmd] name=led\n');
+      expect(app.store.bootCount, 0);
+      expect(app.commands.single.name, 'led');
+
+      // A real restart forgets the commands, so ask again.
+      now = now.add(const Duration(seconds: 10));
+      transport.emit('[!hello] smp=1 name="Bench"\n');
+      expect(transport.written, <String>['?\n', '?\n']);
+
+      // Reconnecting starts over.
+      transport.emit('[!cmd] name=led\n');
+      app.session.disconnect();
+      app.session.connect();
+      now = now.add(const Duration(seconds: 10));
+      transport.emit('[env] temp=21.2C\n');
+      expect(transport.written, <String>['?\n', '?\n'], reason: 'commands are still known');
+    });
+
+    test('plain output is not asked anything, and asking can be turned off', () {
+      transport.emit('Temp: 23.5 C\nI (1234) wifi: connected\n');
+      expect(transport.written, isEmpty);
+      app.setAutoDescribe(false);
+      transport.emit('[env] temp=21.0C\n');
+      expect(transport.written, isEmpty);
+    });
+
+    test('the transcript keeps both directions in order and saves to a file', () async {
+      app.setAutoDescribe(false);
+      transport.emit('\x1B[0;32m[env] temp=21.0C\x1B[0m\n');
+      now = now.add(const Duration(milliseconds: 5));
+      app.send('led on');
+      transport.emit('plain line\n');
+      expect(app.transcript.lines.map((l) => l.text), <String>['[env] temp=21.0C', 'led on', 'plain line']);
+      expect(app.transcript.export(timestamps: false), '[env] temp=21.0C\n> led on\nplain line\n');
+
+      final dir = Directory.systemTemp.createTempSync('smp_test');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final path = '${dir.path}/out.log';
+      expect(await app.saveTranscript(path), 3);
+      final saved = File(path).readAsLinesSync();
+      expect(saved, hasLength(3));
+      expect(saved[1], endsWith('  > led on'));
+
+      final rec = '${dir.path}/rec.log';
+      await app.startRecording(rec);
+      transport.emit('after start\n');
+      app.send('led off');
+      await app.stopRecording();
+      expect(File(rec).readAsLinesSync().map((l) => l.substring(25)), <String>['after start', '> led off']);
+    });
+
+    test('deleting a row closes its detail panel', () {
+      transport.emit('Temp: 23.5 C\n');
+      final key = app.store.groups.firstWhere((g) => g.kind == GroupKind.device).key;
+      app.select(key);
+      app.deleteRow(key);
+      expect(app.store.group(key), isNull);
+      expect(app.selectedGroup, isNull);
+    });
+
+    test('zoom steps return to exactly 100% and are bounded', () {
+      app.zoomIn();
+      app.zoomIn();
+      expect(app.textScale.value, greaterThan(1.2));
+      app.zoomOut();
+      app.zoomOut();
+      expect(app.textScale.value, 1.0);
+      for (var i = 0; i < 50; i++) {
+        app.zoomOut();
+      }
+      expect(app.textScale.value, AppController.minTextScale);
+      app.zoomReset();
+      expect(app.textScale.value, 1.0);
     });
   });
 }

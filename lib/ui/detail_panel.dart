@@ -38,6 +38,13 @@ class DetailPanel extends StatelessWidget {
                   ),
                 ),
                 IconButton(
+                  tooltip: app.detailTimestamps ? 'Hide timestamps in this log' : 'Show timestamps in this log',
+                  isSelected: app.detailTimestamps,
+                  icon: const Icon(Icons.schedule, size: 18),
+                  selectedIcon: const Icon(Icons.schedule, size: 18, color: kAccent),
+                  onPressed: () => app.setDetailTimestamps(!app.detailTimestamps),
+                ),
+                IconButton(
                   tooltip: 'Close',
                   icon: const Icon(Icons.close, size: 18),
                   onPressed: () => app.select(null),
@@ -73,11 +80,11 @@ class DetailPanel extends StatelessWidget {
           Expanded(
             child: ListView.builder(
               itemCount: g.log.length,
-              itemExtent: 22,
+              itemExtent: MediaQuery.textScalerOf(context).scale(22),
               itemBuilder: (context, index) {
                 // Newest first, so the list does not need to chase the bottom.
                 final entry = g.log.elementAt(g.log.length - 1 - index);
-                return _LogRow(entry: entry, showTime: app.showTimestamps);
+                return _LogRow(entry: entry, showTime: app.detailTimestamps);
               },
             ),
           ),

@@ -17,13 +17,25 @@ Flutter desktop app (Dart) for macOS and Windows.
 - **Grouping.** By `[tag]` if the firmware uses the protocol below;
   otherwise by ESP-IDF tag, arduino-esp32 `file:line`, or by the line's
   shape (numbers ignored), so `Temp: 23.5` and `Temp: 23.7` are one row.
-- **Click a row** to open the log of every arrival of that message.
+- **Click a row** to open the log of every arrival of that message. Drag
+  the divider to resize that panel. **Right-click a row** to copy it or
+  delete it (it comes back at the bottom if that message arrives again).
 - **Click a value** in that panel to graph it over time (the chart icon on a
   row is a shortcut to its first value).
 - **Timestamps.** Hover a row for its last arrival, hover a log line for
-  that line's arrival; the clock button shows them inline everywhere.
+  that line's arrival. The clock button in the top bar shows them on every
+  row; the one in the log panel shows them on every log line.
 - **Command box.** Type and press Enter. Autocomplete and the picker button
   are filled from commands the device announces or from a protocol file.
+  Hover a command in the picker to see all of it. Once a device turns out to
+  speak the protocol, the monitor sends `?` by itself (once per connection
+  and after each restart) so its commands are always loaded; turn this off
+  in the menu.
+- **Save the stream.** The save button writes every line received and sent
+  (sent ones marked `>`), with timestamps, to a file. The last 200,000 lines
+  are kept in memory; for longer captures use menu → "Record serial stream
+  to file…", which appends each line as it arrives until you stop it.
+- **Zoom.** Cmd + / Cmd - / Cmd 0 on macOS (Ctrl on Windows).
 - **Survives re-flashing.** See below.
 
 ## Setup (once per machine)
@@ -105,5 +117,5 @@ esp32/          firmware helper library and example
 ## Not in this version
 
 Saved settings (port, baud, window), keyboard history in the command box,
-several values on one chart, export of logs, and matching a re-enumerated
+several values on one chart, and matching a re-enumerated
 device that comes back under a different port name.

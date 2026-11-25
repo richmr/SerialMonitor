@@ -94,31 +94,35 @@ class _CommandBarState extends State<CommandBar> {
       child: Row(
         children: <Widget>[
           PopupMenuButton<CommandSpec>(
-            tooltip: commands.isEmpty
-                ? 'No commands known yet. Send ? or load a protocol file'
-                : 'Pick a command',
+            tooltip: commands.isEmpty ? 'No commands known yet. Send ? or load a protocol file' : 'Pick a command',
             enabled: commands.isNotEmpty,
             icon: const Icon(Icons.list_alt),
+            // Wider than the Material default (280) so descriptions fit more often.
+            constraints: const BoxConstraints(minWidth: 200, maxWidth: 560),
             onSelected: (c) => _insert(c.insertText),
             itemBuilder: (context) => <PopupMenuEntry<CommandSpec>>[
               for (final c in commands)
                 PopupMenuItem<CommandSpec>(
                   value: c,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Text(c.usage, style: kMono),
-                      if (c.desc.isNotEmpty) ...<Widget>[
-                        const SizedBox(width: 16),
-                        Flexible(
-                          child: Text(
-                            c.desc,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: kMuted, fontSize: 12),
+                  // The row is cut off when the menu is narrow: show it all on hover.
+                  child: Tooltip(
+                    message: c.desc.isEmpty ? c.usage : '${c.usage}\n${c.desc}',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(c.usage, style: kMono),
+                        if (c.desc.isNotEmpty) ...<Widget>[
+                          const SizedBox(width: 16),
+                          Flexible(
+                            child: Text(
+                              c.desc,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: kMuted, fontSize: 12),
+                            ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
             ],
@@ -165,24 +169,29 @@ class _CommandBarState extends State<CommandBar> {
                         itemBuilder: (context, index) {
                           final s = list[index];
                           final highlighted = AutocompleteHighlightedOption.of(context) == index;
-                          return InkWell(
-                            onTap: () => onSelected(s),
-                            child: Container(
-                              color: highlighted ? kAccent.withAlpha(40) : null,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              child: Row(
-                                children: <Widget>[
-                                  Flexible(child: Text(s.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: kMono)),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Text(
-                                      s.detail,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(color: kMuted, fontSize: 12),
+                          return Tooltip(
+                            message: s.detail.isEmpty ? s.label : '${s.label}\n${s.detail}',
+                            child: InkWell(
+                              onTap: () => onSelected(s),
+                              child: Container(
+                                color: highlighted ? kAccent.withAlpha(40) : null,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                child: Row(
+                                  children: <Widget>[
+                                    Flexible(
+                                        child:
+                                            Text(s.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: kMono)),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        s.detail,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(color: kMuted, fontSize: 12),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           );

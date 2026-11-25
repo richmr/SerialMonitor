@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../app_controller.dart';
@@ -26,10 +27,7 @@ class _AggregateViewState extends State<AggregateView> {
     final needle = _filter.toLowerCase();
     final rows = <MessageGroup>[
       for (final g in store.groups)
-        if (needle.isEmpty ||
-            g.text.toLowerCase().contains(needle) ||
-            (g.tag ?? '').toLowerCase().contains(needle))
-          g,
+        if (needle.isEmpty || g.text.toLowerCase().contains(needle) || (g.tag ?? '').toLowerCase().contains(needle)) g,
     ];
 
     return Column(
@@ -70,7 +68,7 @@ class _AggregateViewState extends State<AggregateView> {
                 )
               : ListView.builder(
                   itemCount: rows.length,
-                  itemExtent: _GroupRow.height,
+                  itemExtent: MediaQuery.textScalerOf(context).scale(_GroupRow.height),
                   itemBuilder: (context, index) {
                     final g = rows[index];
                     return _GroupRow(
@@ -181,15 +179,42 @@ class _GroupRow extends StatelessWidget {
       child: Opacity(opacity: stale ? 0.45 : 1, child: content),
     );
 
-    return Tooltip(
-      message: 'Last arrival ${formatTime(g.lastSeen)}\n'
-          'First arrival ${formatTime(g.firstSeen)}\n'
-          '${g.count} total${g.repeat > 1 ? ', last ${g.repeat} identical' : ''}'
-          '${stale ? '\nNot seen since the device restarted' : ''}',
-      child: InkWell(
-        onTap: () => app.select(selected ? null : g.key),
-        child: tinted,
+    return GestureDetector(
+      onSecondaryTapUp: (details) => _showContextMenu(context, details.globalPosition),
+      child: Tooltip(
+        message: 'Last arrival ${formatTime(g.lastSeen)}\n'
+            'First arrival ${formatTime(g.firstSeen)}\n'
+            '${g.count} total${g.repeat > 1 ? ', last ${g.repeat} identical' : ''}'
+            '${stale ? '\nNot seen since the device restarted' : ''}',
+        child: InkWell(
+          onTap: () => app.select(selected ? null : g.key),
+          child: tinted,
+        ),
       ),
     );
+  }
+
+  Future<void> _showContextMenu(BuildContext context, Offset position) async {
+    final g = group;
+    final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final choice = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(position & const Size(1, 1), Offset.zero & overlay.size),
+      items: <PopupMenuEntry<String>>[
+        const PopupMenuItem<String>(value: 'copy', child: Text('Copy line')),
+        const PopupMenuItem<String>(value: 'copyLog', child: Text('Copy all arrivals')),
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(value: 'delete', child: Text('Delete row')),
+      ],
+    );
+    switch (choice) {
+      case 'copy':
+        await Clipboard.setData(ClipboardData(text: g.tag == null ? g.text : '[${g.tag}] ${g.text}'));
+      case 'copyLog':
+        final text = g.log.map((e) => '${formatTime(e.time)}  ${e.text}').join('\n');
+        await Clipboard.setData(ClipboardData(text: text));
+      case 'delete':
+        app.deleteRow(g.key);
+    }
   }
 }

@@ -29,15 +29,27 @@ class HomePage extends StatelessWidget {
               listenable: Listenable.merge(<Listenable>[app, app.store]),
               builder: (context, _) {
                 final selected = app.store.group(app.selectedGroup);
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Expanded(child: AggregateView(app: app)),
-                    if (selected != null) ...<Widget>[
-                      const VerticalDivider(width: 1),
-                      SizedBox(width: 460, child: DetailPanel(app: app, group: selected)),
-                    ],
-                  ],
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Leave the rows at least this much room, however wide the panel was dragged.
+                    const minRowsWidth = 240.0;
+                    final maxPanel = (constraints.maxWidth - minRowsWidth).clamp(0.0, double.infinity);
+                    final panelWidth = app.detailWidth.clamp(0.0, maxPanel).toDouble();
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        Expanded(child: AggregateView(app: app)),
+                        if (selected != null) ...<Widget>[
+                          _ResizeHandle(
+                            onDrag: (dx) => app.setDetailWidth(
+                              (app.detailWidth.clamp(0.0, maxPanel) - dx).clamp(0.0, maxPanel).toDouble(),
+                            ),
+                          ),
+                          SizedBox(width: panelWidth, child: DetailPanel(app: app, group: selected)),
+                        ],
+                      ],
+                    );
+                  },
                 );
               },
             ),
@@ -51,6 +63,47 @@ class HomePage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The divider between the rows and the detail panel. Drag it sideways to
+/// resize the panel.
+class _ResizeHandle extends StatefulWidget {
+  const _ResizeHandle({required this.onDrag});
+
+  /// Called with the horizontal movement since the last call.
+  final ValueChanged<double> onDrag;
+
+  @override
+  State<_ResizeHandle> createState() => _ResizeHandleState();
+}
+
+class _ResizeHandleState extends State<_ResizeHandle> {
+  bool _hover = false;
+  bool _dragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = _hover || _dragging;
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragStart: (_) => setState(() => _dragging = true),
+        onHorizontalDragUpdate: (d) => widget.onDrag(d.delta.dx),
+        onHorizontalDragEnd: (_) => setState(() => _dragging = false),
+        onHorizontalDragCancel: () => setState(() => _dragging = false),
+        // A wide invisible grab area around a thin visible line.
+        child: SizedBox(
+          width: 7,
+          child: Center(
+            child: Container(width: active ? 3 : 1, color: active ? kAccent : kDivider),
+          ),
+        ),
       ),
     );
   }

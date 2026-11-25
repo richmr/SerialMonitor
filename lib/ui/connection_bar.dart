@@ -68,6 +68,10 @@ class ConnectionBar extends StatelessWidget {
           const SizedBox(width: 12),
           Flexible(child: _StatusLabel(app: app)),
           const Spacer(),
+          if (app.transcript.isRecording) ...<Widget>[
+            _RecordingChip(app: app),
+            const SizedBox(width: 8),
+          ],
           IconButton(
             tooltip: 'Restart the ESP32 (pulse EN through RTS)',
             icon: const Icon(Icons.restart_alt),
@@ -86,11 +90,16 @@ class ConnectionBar extends StatelessWidget {
               onPressed: active ? () => session.release() : null,
             ),
           IconButton(
-            tooltip: app.showTimestamps ? 'Hide timestamps' : 'Show timestamps on every line',
+            tooltip: app.showTimestamps ? 'Hide row timestamps' : 'Show timestamps on every row',
             isSelected: app.showTimestamps,
             icon: const Icon(Icons.schedule),
             selectedIcon: const Icon(Icons.schedule, color: kAccent),
             onPressed: () => app.setShowTimestamps(!app.showTimestamps),
+          ),
+          IconButton(
+            tooltip: 'Save the serial stream to a file',
+            icon: const Icon(Icons.save_alt),
+            onPressed: () => _saveStream(context),
           ),
           IconButton(
             tooltip: 'Clear all rows',
@@ -112,6 +121,11 @@ class ConnectionBar extends StatelessWidget {
                 checked: app.clearOnBoot,
                 child: const Text('Clear rows when the device restarts'),
               ),
+              CheckedPopupMenuItem<String>(
+                value: 'autoDescribe',
+                checked: app.autoDescribe,
+                child: const Text('Ask SMP devices for their commands (?)'),
+              ),
               const PopupMenuDivider(),
               CheckedPopupMenuItem<String>(
                 value: 'dtr',
@@ -125,6 +139,12 @@ class ConnectionBar extends StatelessWidget {
               ),
               const PopupMenuDivider(),
               const PopupMenuItem<String>(value: 'protocol', child: Text('Load protocol file…')),
+              const PopupMenuDivider(),
+              const PopupMenuItem<String>(value: 'save', child: Text('Save serial stream…')),
+              PopupMenuItem<String>(
+                value: 'record',
+                child: Text(app.transcript.isRecording ? 'Stop recording' : 'Record serial stream to file…'),
+              ),
             ],
           ),
         ],
@@ -145,8 +165,65 @@ class ConnectionBar extends StatelessWidget {
       case 'rts':
         session.rts = !session.rts;
         session.applySettings();
+      case 'autoDescribe':
+        app.setAutoDescribe(!app.autoDescribe);
       case 'protocol':
         await _loadProtocol(context);
+      case 'save':
+        await _saveStream(context);
+      case 'record':
+        if (app.transcript.isRecording) {
+          await app.stopRecording();
+        } else {
+          await _startRecording(context);
+        }
+    }
+  }
+
+  static const XTypeGroup _logFiles = XTypeGroup(label: 'Log file', extensions: <String>['log', 'txt']);
+
+  String _suggestedName(String suffix) {
+    final t = DateTime.now();
+    String two(int v) => v.toString().padLeft(2, '0');
+    final device = app.deviceName.isEmpty ? 'serial' : app.deviceName.replaceAll(RegExp(r'[^A-Za-z0-9_.-]+'), '_');
+    return '$device-${t.year}${two(t.month)}${two(t.day)}-${two(t.hour)}${two(t.minute)}${two(t.second)}$suffix.log';
+  }
+
+  Future<void> _saveStream(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (app.transcript.length == 0) {
+      messenger.showSnackBar(const SnackBar(content: Text('Nothing received yet: nothing to save')));
+      return;
+    }
+    try {
+      final location = await getSaveLocation(
+        suggestedName: _suggestedName(''),
+        acceptedTypeGroups: const <XTypeGroup>[_logFiles],
+      );
+      if (location == null) return;
+      final count = await app.saveTranscript(location.path);
+      final dropped = app.transcript.droppedLines;
+      messenger.showSnackBar(SnackBar(
+        content: Text('Saved $count lines'
+            '${dropped > 0 ? ' (the oldest $dropped were no longer in memory; use Record for long captures)' : ''}'),
+      ));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+    }
+  }
+
+  Future<void> _startRecording(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final location = await getSaveLocation(
+        suggestedName: _suggestedName('-rec'),
+        acceptedTypeGroups: const <XTypeGroup>[_logFiles],
+        confirmButtonText: 'Record',
+      );
+      if (location == null) return;
+      await app.startRecording(location.path);
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not start recording: $e')));
     }
   }
 
@@ -204,6 +281,39 @@ class _StatusLabel extends StatelessWidget {
           const SizedBox(width: 6),
           Flexible(child: Text(text, overflow: TextOverflow.ellipsis)),
         ],
+      ),
+    );
+  }
+}
+
+/// Shown while the stream is being recorded to a file. Click to stop.
+class _RecordingChip extends StatelessWidget {
+  const _RecordingChip({required this.app});
+
+  final AppController app;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Recording to ${app.transcript.recordingPath}\nClick to stop',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: app.stopRecording,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFEF6B6B)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(Icons.fiber_manual_record, size: 12, color: Color(0xFFEF6B6B)),
+              SizedBox(width: 4),
+              Text('REC', style: TextStyle(fontSize: 12, color: Color(0xFFEF6B6B))),
+            ],
+          ),
+        ),
       ),
     );
   }

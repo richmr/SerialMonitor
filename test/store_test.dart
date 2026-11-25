@@ -74,6 +74,17 @@ void main() {
     expect(store.group('p:alpha')!.count, 2);
   });
 
+  test('a deleted row comes back at the end when its message arrives again', () {
+    final store = MessageStore(notifyInterval: Duration.zero);
+    store.record(key: 'a', tag: 'a', text: '1', time: t0);
+    store.record(key: 'b', tag: 'b', text: '1', time: t0);
+    expect(store.remove('a'), isTrue);
+    expect(store.remove('a'), isFalse);
+    store.record(key: 'a', tag: 'a', text: '2', time: t0);
+    expect(store.groups.map((g) => g.key), <String>['b', 'a']);
+    expect(store.group('a')!.count, 1);
+  });
+
   test('clear keeps sent and monitor rows unless asked', () {
     final store = newStore();
     store.addLine(parseLine('[a] 1')!, at(0));

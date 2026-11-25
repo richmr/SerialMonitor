@@ -164,6 +164,14 @@ class MessageStore extends ChangeNotifier {
     return true;
   }
 
+  /// Removes one row. It comes back (at the bottom) if that kind of message
+  /// arrives again. Returns false if there was no such row.
+  bool remove(String key) {
+    final removed = _groups.remove(key) != null;
+    if (removed) _scheduleNotify();
+    return removed;
+  }
+
   /// Removes device rows. Sent-command and monitor rows are kept unless [all].
   void clear({bool all = false}) {
     if (all) {
