@@ -323,8 +323,6 @@ class _TraceChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final plot = app.plot;
-    final series = app.store.group(trace.groupKey)?.series[trace.seriesName];
-    final last = series?.last;
     final color = traceColor(trace);
     final onLeft = trace.axis == PlotAxis.left;
     return Container(
@@ -344,13 +342,10 @@ class _TraceChip extends StatelessWidget {
               decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(width: 6),
+            // No live value here: its changing width would shift the buttons
+            // while you aim at them. Hover the chart for values.
             Text(trace.label, style: kMono.copyWith(fontSize: 12)),
-            const SizedBox(width: 6),
-            Text(
-              last == null ? 'no data' : '${formatNumber(last)}${series!.unit}',
-              style: kMono.copyWith(fontSize: 12, color: kMuted),
-            ),
-            const SizedBox(width: 2),
+            const SizedBox(width: 4),
             _ChipButton(
               tooltip: onLeft
                   ? 'On the left scale. Click to move it to the right one'
