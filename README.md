@@ -22,6 +22,23 @@ Flutter desktop app (Dart) for macOS and Windows.
   delete it (it comes back at the bottom if that message arrives again).
 - **Click a value** in that panel to graph it over time (the chart icon on a
   row is a shortcut to its first value).
+- **Plot window.** With a value graphed in the detail panel, "Plot in
+  window" opens it in a floating plot window (drag its title bar to move it,
+  its corner to resize it). Pick another value and "Add to plot" overlays it,
+  up to 8. A value whose unit or range doesn't fit the left scale goes on a
+  right-hand one; the L/R button on each legend entry moves it, the eye hides
+  it, × removes it.
+  - Window length: 10s, 30s, 1m, 5m or 20m.
+  - Scroll back in time with the scrollbar (click either side of the thumb,
+    or the arrows, to move one window length) or a scroll wheel/trackpad. The
+    view then stays put while new data arrives; the ⏩ button returns to real
+    time.
+  - Drag across the chart to zoom in on that stretch; ↶ goes back to the
+    previous view.
+  - Hover for the values at that moment.
+  - The save button stores the plot under the device's name (from its
+    `[!hello]`); it reopens by itself the next time that device connects.
+    Each value keeps its most recent 50,000 points.
 - **Timestamps.** Hover a row for its last arrival, hover a log line for
   that line's arrival. The clock button in the top bar shows them on every
   row; the one in the log panel shows them on every log line.
@@ -117,5 +134,6 @@ esp32/          firmware helper library and example
 ## Not in this version
 
 Saved settings (port, baud, window), keyboard history in the command box,
-several values on one chart, and matching a re-enumerated
+a plot window that can leave the main window (Flutter's multi-window support
+is not yet in a stable release), and matching a re-enumerated
 device that comes back under a different port name.

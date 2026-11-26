@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import 'model/message_store.dart';
+import 'model/plot.dart';
 import 'model/transcript.dart';
 import 'protocol/parser.dart';
 import 'protocol/protocol_doc.dart';
@@ -13,8 +14,12 @@ import 'serial/transport.dart';
 
 /// Glue between the serial session, the message store and the UI state.
 class AppController extends ChangeNotifier {
-  AppController(SerialTransport transport, {DateTime Function()? clock, MessageStore? store})
-      : _clock = clock ?? DateTime.now,
+  AppController(
+    SerialTransport transport, {
+    DateTime Function()? clock,
+    MessageStore? store,
+    this.plotSettings,
+  })  : _clock = clock ?? DateTime.now,
         store = store ?? MessageStore() {
     session = SerialSession(transport, onLine: handleLine, onEvent: _onSessionEvent, clock: _clock);
     session.addListener(_onSessionChanged);
@@ -28,6 +33,10 @@ class AppController extends ChangeNotifier {
   final MessageStore store;
   late final SerialSession session;
   final ControlServer _control = ControlServer();
+
+  /// The floating plot window. Null [plotSettings] means plots are not saved.
+  final PlotModel plot = PlotModel();
+  final PlotSettingsStore? plotSettings;
 
   /// Every line in and out, in order, for saving the serial stream.
   final Transcript transcript = Transcript();
@@ -106,7 +115,11 @@ class AppController extends ChangeNotifier {
         return; // command declarations are not shown as rows
       }
       if (parsed.tag == '!hello') {
-        deviceName = fields['name'] ?? '';
+        final name = fields['name'] ?? '';
+        if (name != deviceName) {
+          deviceName = name;
+          _restorePlot();
+        }
         final sent = _describeSentAt;
         final isReplyToDescribe = sent != null && now.difference(sent) < _describeWindow;
         if (!isReplyToDescribe) {
@@ -240,6 +253,104 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---- the plot window ------------------------------------------------------
+
+  DateTime now() => _clock();
+
+  /// Adds a row's value to the plot window and opens it. A value whose unit
+  /// or range does not fit the left scale goes on the right one. Returns
+  /// false when the plot already holds [PlotModel.maxTraces] values.
+  bool plotSeries(String groupKey, String seriesName) {
+    final group = store.group(groupKey);
+    final series = group?.series[seriesName];
+    final existing = plot.find(groupKey, seriesName);
+    final trace = existing ??
+        plot.add(
+          groupKey,
+          seriesName,
+          label: group?.tag == null ? seriesName : '${group!.tag}.$seriesName',
+          axis: series == null ? PlotAxis.left : _pickAxis(series),
+        );
+    if (trace == null) return false;
+    if (existing != null && !existing.visible) plot.setVisible(existing, true);
+    plot.setOpen(true);
+    return true;
+  }
+
+  PlotAxis _pickAxis(Series series) {
+    final left = <Series>[];
+    final right = <Series>[];
+    for (final t in plot.traces) {
+      final s = store.group(t.groupKey)?.series[t.seriesName];
+      if (s == null || !t.visible) continue;
+      (t.axis == PlotAxis.left ? left : right).add(s);
+    }
+    if (left.isEmpty) return PlotAxis.left;
+    // Same unit as what is already on a scale: share it.
+    if (series.unit.isNotEmpty) {
+      if (left.any((s) => s.unit == series.unit)) return PlotAxis.left;
+      if (right.any((s) => s.unit == series.unit)) return PlotAxis.right;
+      if (left.any((s) => s.unit.isNotEmpty)) return PlotAxis.right;
+    }
+    final mine = _range(<Series>[series]);
+    final theirs = _range(left);
+    if (mine == null || theirs == null) return PlotAxis.left;
+    // Would it be squashed flat, or squash the others flat? Then use its own scale.
+    final mySpan = (mine.$2 - mine.$1).abs();
+    final theirSpan = (theirs.$2 - theirs.$1).abs();
+    final combined = (mine.$2 > theirs.$2 ? mine.$2 : theirs.$2) - (mine.$1 < theirs.$1 ? mine.$1 : theirs.$1);
+    final biggest = mySpan > theirSpan ? mySpan : theirSpan;
+    if (biggest == 0) return combined == 0 ? PlotAxis.left : PlotAxis.right;
+    return combined > biggest * 4 ||
+            (mySpan > 0 && theirSpan > 0 && biggest / (mySpan < theirSpan ? mySpan : theirSpan) > 10)
+        ? PlotAxis.right
+        : PlotAxis.left;
+  }
+
+  /// Min and max of the newest points of [list].
+  (double, double)? _range(List<Series> list) {
+    double? lo;
+    double? hi;
+    for (final s in list) {
+      final p = s.points;
+      final from = p.length > 500 ? p.length - 500 : 0;
+      for (var i = from; i < p.length; i++) {
+        final v = p.valueAt(i);
+        if (lo == null || v < lo) lo = v;
+        if (hi == null || v > hi) hi = v;
+      }
+    }
+    return lo == null ? null : (lo, hi!);
+  }
+
+  bool get canSavePlot => plotSettings != null && deviceName.isNotEmpty && plot.traces.isNotEmpty;
+
+  /// Saves the plot for the connected device; it comes back when that
+  /// device next says hello. Returns an error message or null.
+  String? savePlot() {
+    final settings = plotSettings;
+    if (settings == null) return 'Plot settings cannot be saved on this system';
+    if (deviceName.isEmpty) return 'The device has not said its name ([!hello]), so there is nothing to save it under';
+    try {
+      settings.save(deviceName, plot.toJson());
+      _monitorEvent('Saved the plot for $deviceName', false);
+      return null;
+    } catch (e) {
+      return 'Could not save the plot: $e';
+    }
+  }
+
+  /// Loads the saved plot for a device that has just said hello, unless
+  /// a plot is already being built.
+  void _restorePlot() {
+    final settings = plotSettings;
+    if (settings == null || deviceName.isEmpty || plot.traces.isNotEmpty) return;
+    final saved = settings.load(deviceName);
+    if (saved == null) return;
+    plot.apply(saved);
+    _monitorEvent('Loaded the saved plot for $deviceName', false);
+  }
+
   // ---- saving the stream ----------------------------------------------------
 
   /// Writes the lines held in memory to [path]. Returns how many were written.
@@ -313,6 +424,7 @@ class AppController extends ChangeNotifier {
     session.removeListener(_onSessionChanged);
     unawaited(transcript.stopRecording());
     textScale.dispose();
+    plot.dispose();
     _control.stop();
     session.dispose();
     store.dispose();

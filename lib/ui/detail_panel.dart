@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../app_controller.dart';
 import '../model/message_store.dart';
+import '../model/plot.dart';
 import '../protocol/parser.dart';
 import 'line_chart.dart';
 import 'style.dart';
@@ -69,11 +70,28 @@ class DetailPanel extends StatelessWidget {
               ),
             ),
           if (series != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 8, 0),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      series.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: kMono.copyWith(color: kMuted),
+                    ),
+                  ),
+                  _PlotButton(app: app, group: g, seriesName: series.name),
+                ],
+              ),
+            ),
+          if (series != null)
             SizedBox(
               height: 200,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(4, 0, 8, 4),
-                child: LineChart(points: series.points.toList(growable: false), unit: series.unit),
+                child: LineChart(points: series.points.tail(2000), unit: series.unit),
               ),
             ),
           const Divider(height: 1),
@@ -89,6 +107,54 @@ class DetailPanel extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Sends the graphed value to the plot window (opening it), or adds it
+/// alongside what is already plotted there.
+class _PlotButton extends StatelessWidget {
+  const _PlotButton({required this.app, required this.group, required this.seriesName});
+
+  final AppController app;
+  final MessageGroup group;
+  final String seriesName;
+
+  @override
+  Widget build(BuildContext context) {
+    final plot = app.plot;
+    final inPlot = plot.find(group.key, seriesName)?.visible ?? false;
+    final others = plot.traces.length - (plot.find(group.key, seriesName) == null ? 0 : 1);
+    final String label;
+    final String tip;
+    if (inPlot) {
+      label = plot.open ? 'In plot window' : 'Show plot window';
+      tip = 'Already in the plot window';
+    } else if (plot.open && others > 0) {
+      label = 'Add to plot';
+      tip = 'Overlay $seriesName on the plot window';
+    } else {
+      label = 'Plot in window';
+      tip = 'Open $seriesName in the plot window';
+    }
+    return Tooltip(
+      message: tip,
+      child: TextButton.icon(
+        style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+        icon: Icon(inPlot ? Icons.check : Icons.open_in_new, size: 16),
+        label: Text(label, style: const TextStyle(fontSize: 12)),
+        onPressed: inPlot && plot.open
+            ? null
+            : () {
+                if (!app.plotSeries(group.key, seriesName)) {
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(
+                      const SnackBar(content: Text('The plot holds ${PlotModel.maxTraces} values. Remove one first')),
+                    );
+                }
+              },
       ),
     );
   }

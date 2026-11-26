@@ -3,13 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'app_controller.dart';
+import 'model/plot.dart';
 import 'serial/libserial_transport.dart';
 import 'ui/home_page.dart';
 import 'ui/style.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  final app = AppController(LibSerialTransport());
+  final app = AppController(LibSerialTransport(), plotSettings: PlotSettingsStore.defaultLocation());
   app.start();
   runApp(SerialMonitorApp(app: app));
 }

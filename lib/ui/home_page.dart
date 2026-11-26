@@ -5,6 +5,7 @@ import 'aggregate_view.dart';
 import 'command_bar.dart';
 import 'connection_bar.dart';
 import 'detail_panel.dart';
+import 'plot_panel.dart';
 import 'style.dart';
 
 class HomePage extends StatelessWidget {
@@ -15,55 +16,72 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: <Widget>[
-          // Connection state changes rarely; rebuild it only for those.
-          ListenableBuilder(
-            listenable: Listenable.merge(<Listenable>[app, app.session]),
-            builder: (context, _) => ConnectionBar(app: app),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            // The store notifies at most ~30 times a second.
-            child: ListenableBuilder(
-              listenable: Listenable.merge(<Listenable>[app, app.store]),
-              builder: (context, _) {
-                final selected = app.store.group(app.selectedGroup);
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Leave the rows at least this much room, however wide the panel was dragged.
-                    const minRowsWidth = 240.0;
-                    final maxPanel = (constraints.maxWidth - minRowsWidth).clamp(0.0, double.infinity);
-                    final panelWidth = app.detailWidth.clamp(0.0, maxPanel).toDouble();
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        Expanded(child: AggregateView(app: app)),
-                        if (selected != null) ...<Widget>[
-                          _ResizeHandle(
-                            onDrag: (dx) => app.setDetailWidth(
-                              (app.detailWidth.clamp(0.0, maxPanel) - dx).clamp(0.0, maxPanel).toDouble(),
-                            ),
-                          ),
-                          SizedBox(width: panelWidth, child: DetailPanel(app: app, group: selected)),
-                        ],
-                      ],
-                    );
-                  },
-                );
-              },
+      body: LayoutBuilder(
+        builder: (context, constraints) => Stack(
+          children: <Widget>[
+            Positioned.fill(child: _main()),
+            // The plot window floats over everything else.
+            ListenableBuilder(
+              listenable: Listenable.merge(<Listenable>[app, app.plot, app.store]),
+              builder: (context, _) => app.plot.open
+                  ? PlotPanel(app: app, area: constraints.biggest)
+                  : const Positioned(left: 0, top: 0, child: SizedBox.shrink()),
             ),
-          ),
-          const Divider(height: 1),
-          ListenableBuilder(
-            listenable: Listenable.merge(<Listenable>[app, app.session]),
-            builder: (context, _) => Container(
-              color: kSurface,
-              child: CommandBar(app: app),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _main() {
+    return Column(
+      children: <Widget>[
+        // Connection state changes rarely; rebuild it only for those.
+        ListenableBuilder(
+          listenable: Listenable.merge(<Listenable>[app, app.session, app.plot]),
+          builder: (context, _) => ConnectionBar(app: app),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          // The store notifies at most ~30 times a second.
+          child: ListenableBuilder(
+            listenable: Listenable.merge(<Listenable>[app, app.store, app.plot]),
+            builder: (context, _) {
+              final selected = app.store.group(app.selectedGroup);
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  // Leave the rows at least this much room, however wide the panel was dragged.
+                  const minRowsWidth = 240.0;
+                  final maxPanel = (constraints.maxWidth - minRowsWidth).clamp(0.0, double.infinity);
+                  final panelWidth = app.detailWidth.clamp(0.0, maxPanel).toDouble();
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Expanded(child: AggregateView(app: app)),
+                      if (selected != null) ...<Widget>[
+                        _ResizeHandle(
+                          onDrag: (dx) => app.setDetailWidth(
+                            (app.detailWidth.clamp(0.0, maxPanel) - dx).clamp(0.0, maxPanel).toDouble(),
+                          ),
+                        ),
+                        SizedBox(width: panelWidth, child: DetailPanel(app: app, group: selected)),
+                      ],
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        const Divider(height: 1),
+        ListenableBuilder(
+          listenable: Listenable.merge(<Listenable>[app, app.session]),
+          builder: (context, _) => Container(
+            color: kSurface,
+            child: CommandBar(app: app),
+          ),
+        ),
+      ],
     );
   }
 }
