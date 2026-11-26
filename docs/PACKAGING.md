@@ -51,24 +51,26 @@ The build isn't code-signed, so SmartScreen may say "Windows protected your
 PC". Click *More info*, then *Run anyway*. Unblocking the zip in its
 Properties before you extract it avoids this.
 
-## Building both from GitHub
+## Windows build from GitHub
 
-The **Release** workflow (`.github/workflows/release.yml`) runs the tests
-and both packaging scripts on GitHub's macOS and Windows machines, so you
-can get a Windows build without a Windows PC.
+You don't need a Windows PC to make the Windows package. The **Windows
+package** workflow (`.github/workflows/windows-package.yml`) runs the tests
+and `tool\package_windows.ps1` on one of GitHub's Windows machines. It only
+runs when you start it:
 
-- **By hand:** on the repo's *Actions* tab, choose *Release* and click
-  *Run workflow*. When it finishes, download the `.dmg` and `.zip` from the
-  run's *Artifacts* section.
-- **Tagged release:** bump `version:` in `pubspec.yaml`, commit, then
+1. Push the branch you want built. The workflow file itself has to be on
+   `main` before the *Run workflow* button appears, though any branch can
+   then be built.
+2. On the repo's *Actions* tab, choose *Windows package*, pick that branch
+   and click *Run workflow*.
+3. When it finishes, download `SerialMonitor-Windows` from the run's
+   *Artifacts* section. It's a zip that holds the package zip.
 
-  ```sh
-  git tag v0.2.0 && git push origin v0.2.0
-  ```
+On a private repo a run uses roughly 20 of the free monthly Actions minutes,
+because Windows minutes count double. Build the macOS `.dmg` locally with
+`tool/package_macos.sh`.
 
-  The workflow attaches both packages to a GitHub release for that tag.
-
-CI builds are unsigned, just like local builds without `SIGN_IDENTITY`.
+The CI build is unsigned, just like a local build.
 
 ## App icon
 

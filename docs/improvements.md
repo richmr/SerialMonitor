@@ -1,3 +1,3 @@
 - [x] Proper docking/application icon (`assets/icon/icon.svg`, `tool/make_icons.sh`)
-- [x] Packaged runnable binary (`tool/package_macos.sh`, `tool/package_windows.ps1`, Release workflow; see `docs/PACKAGING.md`)
+- [x] Packaged runnable binary (`tool/package_macos.sh`, `tool/package_windows.ps1`, Windows package workflow; see `docs/PACKAGING.md`)
 - [x] Steps to build and package for Windows (`docs/WINDOWS_SETUP.md`)

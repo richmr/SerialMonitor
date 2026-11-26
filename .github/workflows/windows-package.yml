@@ -1,0 +1,31 @@
+# Builds the Windows .zip on GitHub's Windows runner. Run it by hand:
+# Actions tab -> Windows package -> Run workflow, then download the zip from
+# the run's Artifacts section. (The macOS .dmg is built locally with
+# tool/package_macos.sh.)
+name: Windows package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter test
+      - run: tool\package_windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SerialMonitor-Windows
+          path: dist/*

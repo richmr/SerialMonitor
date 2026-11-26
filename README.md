@@ -80,8 +80,8 @@ flutter run -d macos      # or: -d windows
 
 `tool/package_macos.sh` makes a `.dmg` and `tool\package_windows.ps1` a
 `.zip` that runs on a PC without Flutter, both in `dist/`. The GitHub
-**Release** workflow builds both. See [docs/PACKAGING.md](docs/PACKAGING.md)
-for signing, opening unsigned builds and regenerating the app icon.
+**Windows package** workflow builds the `.zip` when you start it by hand.
+See [docs/PACKAGING.md](docs/PACKAGING.md) for signing, opening unsigned builds and regenerating the app icon.
 
 ## ESP32 defaults
 
