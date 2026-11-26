@@ -92,7 +92,8 @@ and runs CocoaPods); later runs are fast.
 | `flutter analyze` | Type-check and lint without building. |
 | `flutter test` | Run the tests in `test/`. |
 | `flutter pub get` | Fetch packages after `pubspec.yaml` changes. |
-| `flutter build macos` | Release build, written to `build/macos/Build/Products/Release/`. |
+| `flutter build macos` | Release build, written to `build/macos/Build/Products/Release/Serial Monitor.app`. |
+| `tool/package_macos.sh` | Release build packed into `dist/SerialMonitor-<version>-macos.dmg` (see [PACKAGING.md](PACKAGING.md)). |
 | `flutter upgrade` | Update Flutter itself. |
 | `flutter clean` | Delete build output when a build gets stuck; follow with `flutter pub get`. |
 
