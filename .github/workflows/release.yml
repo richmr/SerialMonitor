@@ -1,0 +1,47 @@
+# Builds the macOS .dmg and Windows .zip.
+# Run it by hand (Actions tab -> Release -> Run workflow) to get the packages
+# as downloadable artifacts, or push a tag like v0.2.0 to also attach them
+# to a GitHub release.
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            script: tool/package_macos.sh
+            shell: bash
+          - os: windows-latest
+            script: tool\package_windows.ps1
+            shell: pwsh
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter test
+      - run: ${{ matrix.script }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SerialMonitor-${{ runner.os }}
+          path: dist/*
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
