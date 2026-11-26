@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "dev.richmr" "\0"
-            VALUE "FileDescription", "serial_monitor" "\0"
+            VALUE "CompanyName", "Michael Rich" "\0"
+            VALUE "FileDescription", "Serial Monitor" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "serial_monitor" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 dev.richmr. All rights reserved." "\0"
-            VALUE "OriginalFilename", "serial_monitor.exe" "\0"
-            VALUE "ProductName", "serial_monitor" "\0"
+            VALUE "InternalName", "SerialMonitor" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Michael Rich. All rights reserved." "\0"
+            VALUE "OriginalFilename", "SerialMonitor.exe" "\0"
+            VALUE "ProductName", "Serial Monitor" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
