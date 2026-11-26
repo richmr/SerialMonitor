@@ -6,7 +6,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:serial_monitor/app_controller.dart';
 import 'package:serial_monitor/main.dart';
 import 'package:serial_monitor/model/message_store.dart';
+import 'package:serial_monitor/model/plot.dart';
 import 'package:serial_monitor/ui/detail_panel.dart';
+import 'package:serial_monitor/ui/plot_chart.dart';
+import 'package:serial_monitor/ui/plot_panel.dart';
 
 import 'session_test.dart' show FakeTransport;
 
@@ -77,5 +80,79 @@ void main() {
     await tester.sendKeyUpEvent(mod);
     await tester.pumpAndSettle();
     expect(app.textScale.value, greaterThan(1.0));
+  });
+
+  testWidgets('plot window: open, overlay a second value, zoom, go back, go live, hide, remove', (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    var now = DateTime(2026, 11, 25, 9);
+    final app = AppController(
+      FakeTransport(),
+      clock: () => now,
+      store: MessageStore(notifyInterval: Duration.zero),
+    );
+    addTearDown(app.dispose);
+    await tester.pumpWidget(SerialMonitorApp(app: app));
+    for (var i = 0; i < 40; i++) {
+      app.handleLine('[env] temp=${20 + i / 10}C hum=${40 + i % 3}%');
+      now = now.add(const Duration(milliseconds: 250));
+    }
+    await tester.pumpAndSettle();
+
+    // Row → value → "Plot in window".
+    await tester.tap(find.text('env'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('temp ').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Plot in window'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.byType(PlotPanel), findsOneWidget);
+    expect(find.text('env.temp'), findsOneWidget);
+
+    // Pick another value: the button now adds it to the open plot.
+    await tester.tap(find.textContaining('hum ').first);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.text('Add to plot'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('env.hum'), findsOneWidget);
+    expect(app.plot.traces.map((t) => t.axis), <PlotAxis>[PlotAxis.left, PlotAxis.right]);
+
+    // Drag across the chart to zoom in on part of it.
+    app.plot.setSpan(const Duration(seconds: 10), app.now());
+    await tester.pump(const Duration(milliseconds: 200));
+    final chart = tester.getRect(find.byType(PlotChart));
+    await tester.dragFrom(chart.center - const Offset(100, 0), const Offset(150, 0));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(app.plot.zoomed, isTrue);
+    expect(app.plot.live, isFalse);
+    expect(app.plot.viewSpan.inMilliseconds, lessThan(10000));
+
+    await tester.tap(find.byTooltip('Back to the previous view'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(app.plot.zoomed, isFalse);
+
+    app.plot.pan(-1, app.now());
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.textContaining('Paused at'), findsOneWidget);
+    await tester.tap(find.byTooltip('Back to real time'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(app.plot.live, isTrue);
+
+    // Hide and remove from the legend.
+    await tester.tap(find.byTooltip('Hide').first);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(app.plot.traces.first.visible, isFalse);
+    await tester.tap(find.byTooltip('Remove from the plot').last);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(app.plot.traces.map((t) => t.label), <String>['env.temp']);
+
+    // Close; the top-bar button brings it back.
+    await tester.tap(find.byTooltip('Close (the values stay; reopen from the top bar)'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.byType(PlotPanel), findsNothing);
+    await tester.tap(find.byTooltip('Show the plot window'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.byType(PlotPanel), findsOneWidget);
   });
 }

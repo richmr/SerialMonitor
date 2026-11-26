@@ -18,14 +18,113 @@ class SeriesPoint {
   final double value;
 }
 
+/// A bounded, time-ordered ring of (time, value) pairs, stored compactly
+/// (16 bytes a point) so long histories stay cheap. Oldest points are
+/// dropped once [capacity] is reached. Times are microseconds since epoch.
+class PointBuffer extends Iterable<SeriesPoint> {
+  PointBuffer(this.capacity) : assert(capacity > 0) {
+    final initial = capacity < 64 ? capacity : 64;
+    _t = Int64List(initial);
+    _v = Float64List(initial);
+  }
+
+  final int capacity;
+  late Int64List _t;
+  late Float64List _v;
+  int _start = 0;
+  int _len = 0;
+
+  @override
+  int get length => _len;
+
+  @override
+  bool get isEmpty => _len == 0;
+
+  @override
+  bool get isNotEmpty => _len != 0;
+
+  int _slot(int i) {
+    final j = _start + i;
+    return j < _t.length ? j : j - _t.length;
+  }
+
+  int timeAt(int i) => _t[_slot(i)];
+  double valueAt(int i) => _v[_slot(i)];
+
+  void add(int micros, double value) {
+    if (_len == _t.length && _t.length < capacity) _grow();
+    if (_len < _t.length) {
+      final j = _slot(_len);
+      _t[j] = micros;
+      _v[j] = value;
+      _len++;
+    } else {
+      // Full: overwrite the oldest.
+      _t[_start] = micros;
+      _v[_start] = value;
+      _start = _start + 1 == _t.length ? 0 : _start + 1;
+    }
+  }
+
+  void _grow() {
+    final size = (_t.length * 2).clamp(1, capacity);
+    final t = Int64List(size);
+    final v = Float64List(size);
+    for (var i = 0; i < _len; i++) {
+      final j = _slot(i);
+      t[i] = _t[j];
+      v[i] = _v[j];
+    }
+    _t = t;
+    _v = v;
+    _start = 0;
+  }
+
+  /// Index of the first point at or after [micros] ([length] if none).
+  int lowerBound(int micros) {
+    var lo = 0;
+    var hi = _len;
+    while (lo < hi) {
+      final mid = (lo + hi) >> 1;
+      if (timeAt(mid) < micros) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    return lo;
+  }
+
+  @override
+  SeriesPoint elementAt(int index) {
+    RangeError.checkValidIndex(index, this);
+    return SeriesPoint(DateTime.fromMicrosecondsSinceEpoch(timeAt(index)), valueAt(index));
+  }
+
+  @override
+  SeriesPoint get first => elementAt(0);
+
+  @override
+  SeriesPoint get last => elementAt(_len - 1);
+
+  /// The newest [count] points (fewer if there are not that many).
+  List<SeriesPoint> tail(int count) {
+    final from = _len > count ? _len - count : 0;
+    return <SeriesPoint>[for (var i = from; i < _len; i++) elementAt(i)];
+  }
+
+  @override
+  Iterator<SeriesPoint> get iterator => Iterable<SeriesPoint>.generate(_len, elementAt).iterator;
+}
+
 /// The history of one numeric value inside a message group.
 class Series {
-  Series(this.name);
+  Series(this.name, {int capacity = 50000}) : points = PointBuffer(capacity);
   final String name;
   String unit = '';
-  final ListQueue<SeriesPoint> points = ListQueue<SeriesPoint>();
+  final PointBuffer points;
 
-  double? get last => points.isEmpty ? null : points.last.value;
+  double? get last => points.isEmpty ? null : points.valueAt(points.length - 1);
 }
 
 /// Where a group's lines come from.
@@ -60,7 +159,7 @@ class MessageGroup {
 class MessageStore extends ChangeNotifier {
   MessageStore({
     this.maxLogPerGroup = 2000,
-    this.maxPointsPerSeries = 2000,
+    this.maxPointsPerSeries = 50000,
     this.maxGroups = 500,
     this.notifyInterval = const Duration(milliseconds: 33),
   });
@@ -141,12 +240,9 @@ class MessageStore extends ChangeNotifier {
     }
 
     for (final n in numbers) {
-      final s = group.series.putIfAbsent(n.name, () => Series(n.name));
+      final s = group.series.putIfAbsent(n.name, () => Series(n.name, capacity: maxPointsPerSeries));
       if (n.unit.isNotEmpty) s.unit = n.unit;
-      s.points.addLast(SeriesPoint(time, n.value));
-      while (s.points.length > maxPointsPerSeries) {
-        s.points.removeFirst();
-      }
+      s.points.add(time.microsecondsSinceEpoch, n.value);
     }
 
     _scheduleNotify();

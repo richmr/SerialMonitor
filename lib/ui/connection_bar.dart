@@ -97,6 +97,17 @@ class ConnectionBar extends StatelessWidget {
             onPressed: () => app.setShowTimestamps(!app.showTimestamps),
           ),
           IconButton(
+            tooltip: app.plot.traces.isEmpty
+                ? 'Plot window: open a row, pick a value, then "Plot in window"'
+                : app.plot.open
+                    ? 'Hide the plot window'
+                    : 'Show the plot window',
+            isSelected: app.plot.open,
+            icon: const Icon(Icons.stacked_line_chart),
+            selectedIcon: const Icon(Icons.stacked_line_chart, color: kAccent),
+            onPressed: app.plot.traces.isEmpty && !app.plot.open ? null : () => app.plot.setOpen(!app.plot.open),
+          ),
+          IconButton(
             tooltip: 'Save the serial stream to a file',
             icon: const Icon(Icons.save_alt),
             onPressed: () => _saveStream(context),
