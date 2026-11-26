@@ -59,7 +59,8 @@ Flutter desktop app (Dart) for macOS and Windows.
 
 Needs Flutter 3.22 or newer, plus Xcode and CocoaPods on macOS or Visual
 Studio with "Desktop development with C++" on Windows.
-New to Flutter on a Mac? See [docs/MAC_SETUP.md](docs/MAC_SETUP.md).
+New to Flutter? See [docs/MAC_SETUP.md](docs/MAC_SETUP.md) or
+[docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md).
 
 ```sh
 tool/bootstrap.sh                                               # macOS
@@ -74,6 +75,13 @@ the app can open serial devices. Then:
 flutter test
 flutter run -d macos      # or: -d windows
 ```
+
+## Packaged builds
+
+`tool/package_macos.sh` makes a `.dmg` and `tool\package_windows.ps1` a
+`.zip` that runs on a PC without Flutter, both in `dist/`. The GitHub
+**Windows package** workflow builds the `.zip` when you start it by hand.
+See [docs/PACKAGING.md](docs/PACKAGING.md) for signing, opening unsigned builds and regenerating the app icon.
 
 ## ESP32 defaults
 
@@ -127,7 +135,7 @@ lib/model/      message store: groups, logs, value series
 lib/serial/     session (reconnect logic), libserialport backend, upload-hook server
 lib/ui/         aggregate view, detail panel, chart, command bar, toolbar
 test/           parser, store, session (with a fake port), UI smoke test
-tool/           bootstrap scripts, PlatformIO upload hook
+tool/           bootstrap, packaging and icon scripts, PlatformIO upload hook
 esp32/          firmware helper library and example
 ```
 

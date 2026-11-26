@@ -22,3 +22,6 @@ windows/flutter/ephemeral/
 
 # PlatformIO
 .pio/
+
+# Packaged releases (tool/package_*)
+dist/
