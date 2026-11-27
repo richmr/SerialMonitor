@@ -257,3 +257,7 @@ flutter run -d macos      # or: flutter run -d windows
 Bug reports and pull requests are welcome. When reporting a bug, it helps to
 attach a short stream capture (⋮ → *Save serial stream…*) that shows the
 problem.
+
+## License
+
+[MIT](LICENSE) © 2026 Mike Rich
