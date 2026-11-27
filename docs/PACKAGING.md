@@ -51,26 +51,51 @@ The build isn't code-signed, so SmartScreen may say "Windows protected your
 PC". Click *More info*, then *Run anyway*. Unblocking the zip in its
 Properties before you extract it avoids this.
 
-## Windows build from GitHub
+## Releases from GitHub
 
-You don't need a Windows PC to make the Windows package. The **Windows
-package** workflow (`.github/workflows/windows-package.yml`) runs the tests
-and `tool\package_windows.ps1` on one of GitHub's Windows machines. It only
-runs when you start it:
+You don't need a Windows PC, or even your Mac, to make a release. The
+**Release** workflow (`.github/workflows/release.yml`) builds both packages
+on GitHub's machines and attaches them to a draft release. It only runs
+when you start it:
 
-1. Push the branch you want built. The workflow file itself has to be on
-   `main` before the *Run workflow* button appears, though any branch can
-   then be built.
-2. On the repo's *Actions* tab, choose *Windows package*, pick that branch
-   and click *Run workflow*.
-3. When it finishes, download `SerialMonitor-Windows` from the run's
-   *Artifacts* section. It's a zip that holds the package zip.
+1. Set `version:` in `pubspec.yaml` to the new version and push it to
+   `main`. The release is tagged `v<version>`, and the run stops early if
+   that tag or release already exists.
+2. On the repo's *Actions* tab, choose *Release*, pick the branch and click
+   *Run workflow*. Leave *Create a draft GitHub release* ticked.
+3. When it finishes, open the *Releases* page. The draft holds the `.dmg`,
+   the `.zip` and `SHA256SUMS.txt`, with notes generated from the merged
+   pull requests. Edit the notes if you like, then click *Publish release*.
+   The tag is created on the commit that was built when you publish.
 
-On a private repo a run uses roughly 20 of the free monthly Actions minutes,
-because Windows minutes count double. Build the macOS `.dmg` locally with
-`tool/package_macos.sh`.
+Untick *Create a draft GitHub release* to just build: the packages are then
+only kept as the run's *Artifacts* (each is a zip holding the package).
 
-The CI build is unsigned, just like a local build.
+The workflow file has to be on `main` before the *Run workflow* button
+appears, though any branch can then be built. On a private repo a run uses
+roughly 20 Windows-equivalent minutes plus about 10 macOS minutes, which
+count 10x against the free monthly allowance. Public repos are free.
+
+### Signing on GitHub
+
+The GitHub builds are unsigned in the same way as local ones, and need no
+certificate or secrets:
+
+- **macOS**: the Xcode project uses `CODE_SIGN_IDENTITY = "-"`, so the
+  build is *ad-hoc signed*. That needs no certificate, and is required for
+  the app to run at all on Apple Silicon. But it has no Developer ID and
+  isn't notarized, so Gatekeeper blocks the downloaded app until the user
+  allows it (see [Opening an unsigned build](#opening-an-unsigned-build-on-another-mac)).
+  The run log prints the signature (`Signature=adhoc`) and the
+  architectures (`x86_64 arm64`).
+- **Windows**: no Authenticode signature, so SmartScreen warns.
+
+To sign the macOS build in CI later, you'd need a paid Apple Developer
+account. Export the *Developer ID Application* certificate as a `.p12`,
+store it and an App Store Connect API key as repository secrets, import the
+certificate into a temporary keychain in the macOS job, and set
+`SIGN_IDENTITY` (and notarize with `xcrun notarytool submit --key ...`)
+before `tool/package_macos.sh` runs.
 
 ## App icon
 
