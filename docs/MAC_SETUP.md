@@ -27,7 +27,7 @@ follow the "Next steps" it prints so `brew` is on your PATH.
 ## 3. CocoaPods
 
 ```sh
-brew install cocoapods
+brew install cocoapods automake libtool   # the last two build libserialport
 pod --version        # should print a version number
 ```
 

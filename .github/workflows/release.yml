@@ -24,7 +24,7 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: v
         run: |
           version=$(sed -n 's/^version: *\([0-9][0-9.]*\).*/\1/p' pubspec.yaml)
@@ -50,7 +50,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -58,7 +58,7 @@ jobs:
       - run: flutter pub get
       - run: flutter test
       - run: tool\package_windows.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: SerialMonitor-Windows
           path: dist/*.zip
@@ -68,11 +68,13 @@ jobs:
     needs: version
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
+      # The libserialport pod runs autogen.sh/configure when it installs.
+      - run: brew install automake libtool
       - run: flutter pub get
       # Tests already run in the Windows job; macOS minutes cost 10x on a private repo.
       - run: tool/package_macos.sh
@@ -81,7 +83,7 @@ jobs:
           app="build/macos/Build/Products/Release/Serial Monitor.app"
           codesign -dv "$app" 2>&1 | grep -E 'Signature|TeamIdentifier|Identifier'
           lipo -archs "$app/Contents/MacOS/"*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: SerialMonitor-macOS
           path: dist/*.dmg
@@ -94,7 +96,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
