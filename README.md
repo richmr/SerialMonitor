@@ -35,9 +35,10 @@ Get the latest build from the
 > **The builds are not code-signed.** Both macOS and Windows will warn you the
 > first time you open the app. This is expected for a free hobby project without
 > an Apple Developer ID or Windows signing certificate. It isn't a sign of
-> tampering, but only download builds from this repository's Releases page. If
-> you'd rather not run an unsigned binary,
-> [build it yourself](#building-from-source).
+> tampering, but only download builds from this repository's Releases page.
+> Each release is built by GitHub Actions from the tagged source and lists
+> SHA-256 checksums in `SHA256SUMS.txt`. If you'd rather not run an unsigned
+> binary, [build it yourself](#building-from-source).
 
 ### macOS
 
