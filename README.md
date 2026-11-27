@@ -19,6 +19,7 @@ Desktop app for **macOS** and **Windows**.
 - [Making your firmware monitor-friendly](#making-your-firmware-monitor-friendly)
 - [Re-flashing while the monitor is open](#re-flashing-while-the-monitor-is-open)
 - [Building from source](#building-from-source)
+- [Trying it with the test bench firmware](#trying-it-with-the-test-bench-firmware)
 
 ## Download and install
 
@@ -77,7 +78,8 @@ If the port doesn't show up in the list, this is usually why.
 
 ## Quick start
 
-1. Plug in your board.
+1. Plug in your board. No firmware of your own yet? Flash the
+   [test bench](#trying-it-with-the-test-bench-firmware) first.
 2. Pick its port at the top left. ESP32-looking ports (Espressif, CP210x,
    CH340, FTDI) are listed first and one is preselected. The default is 115200
    baud.
@@ -257,6 +259,25 @@ flutter run -d macos      # or: flutter run -d windows
 Bug reports and pull requests are welcome. When reporting a bug, it helps to
 attach a short stream capture (⋮ → *Save serial stream…*) that shows the
 problem.
+
+## Trying it with the test bench firmware
+
+[`esp32/examples/testbench`](esp32/examples/testbench) is a PlatformIO project
+that exercises every feature of the monitor, so you can try it out (or check a
+change) without writing any firmware.
+
+1. Deploy it to your board with
+   [PlatformIO](https://docs.platformio.org/en/latest/core/quickstart.html#process-project).
+   The default environment is a classic ESP32 (`esp32dev`). Use `-e esp32-s3`
+   or `-e esp32-c3` for boards with a native USB port.
+2. Connect to the board in Serial Monitor, as in the
+   [Quick start](#quick-start).
+3. Rows for waves, log levels and the different line formats appear and start
+   updating. Type `help` in the command box to list the commands that change
+   them.
+
+The project already includes the [upload hook](#re-flashing-while-the-monitor-is-open),
+so you can re-flash it while the monitor is connected.
 
 ## License
 
