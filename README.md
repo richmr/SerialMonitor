@@ -1,147 +1,259 @@
 # Serial Monitor
 
-A serial monitor for ESP32 development that keeps **one row per kind of
-message** and updates it in place, instead of scrolling everything past you.
-Flutter desktop app (Dart) for macOS and Windows.
+**A serial monitor for ESP32 development that doesn't scroll everything past you.**
 
-> **Status: first version, not yet compiled.** The Dart code was written
-> without a Flutter toolchain available, so expect to fix a few analyzer
-> errors on the first `flutter run`. The ESP32 helper library was compiled
-> and run against a mock Arduino core. Run `flutter test` first.
+Every *kind* of message gets one row that updates in place, with a count of how
+many have arrived. You can watch twenty things at once, click any of them to see
+its history, graph any number in it, and send commands with autocomplete. It
+also keeps working while you re-flash the board.
 
-## What it does
+Desktop app for **macOS** and **Windows**.
 
-- **Aggregate view.** Lines of the same kind share a row: the latest text
-  replaces the previous one and `(count)` in front shows how many have
-  arrived. Rows stay where they first appeared and flash briefly on update.
-- **Grouping.** By `[tag]` if the firmware uses the protocol below;
-  otherwise by ESP-IDF tag, arduino-esp32 `file:line`, or by the line's
-  shape (numbers ignored), so `Temp: 23.5` and `Temp: 23.7` are one row.
-- **Click a row** to open the log of every arrival of that message. Drag
-  the divider to resize that panel. **Right-click a row** to copy it or
-  delete it (it comes back at the bottom if that message arrives again).
-- **Click a value** in that panel to graph it over time (the chart icon on a
-  row is a shortcut to its first value).
-- **Plot window.** With a value graphed in the detail panel, "Plot in
-  window" opens it in a floating plot window (drag its title bar to move it,
-  its corner to resize it). Pick another value and "Add to plot" overlays it,
-  up to 8. A value whose unit or range doesn't fit the left scale goes on a
-  right-hand one; the L/R button on each legend entry moves it, the eye hides
-  it, × removes it.
-  - Window length: 10s, 30s, 1m, 5m or 20m.
-  - Scroll back in time with the scrollbar (click either side of the thumb,
-    or the arrows, to move one window length) or a scroll wheel/trackpad. The
-    view then stays put while new data arrives; the ⏩ button returns to real
-    time.
-  - Drag across the chart to zoom in on that stretch; ↶ goes back to the
-    previous view.
-  - Hover for the values at that moment.
-  - The save button stores the plot under the device's name (from its
-    `[!hello]`); it reopens by itself the next time that device connects.
-    Each value keeps its most recent 50,000 points.
-- **Timestamps.** Hover a row for its last arrival, hover a log line for
-  that line's arrival. The clock button in the top bar shows them on every
-  row; the one in the log panel shows them on every log line.
-- **Command box.** Type and press Enter. Autocomplete and the picker button
-  are filled from commands the device announces or from a protocol file.
-  Hover a command in the picker to see all of it. Once a device turns out to
-  speak the protocol, the monitor sends `?` by itself (once per connection
-  and after each restart) so its commands are always loaded; turn this off
-  in the menu.
-- **Save the stream.** The save button writes every line received and sent
-  (sent ones marked `>`), with timestamps, to a file. The last 200,000 lines
-  are kept in memory; for longer captures use menu → "Record serial stream
-  to file…", which appends each line as it arrives until you stop it.
-- **Zoom.** Cmd + / Cmd - / Cmd 0 on macOS (Ctrl on Windows).
-- **Survives re-flashing.** See below.
+![Serial Monitor showing one updating row per message type](docs/images/hero.png)
 
-## Setup (once per machine)
+## Contents
 
-Needs Flutter 3.22 or newer, plus Xcode and CocoaPods on macOS or Visual
-Studio with "Desktop development with C++" on Windows.
-New to Flutter? See [docs/MAC_SETUP.md](docs/MAC_SETUP.md) or
-[docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md).
+- [Download and install](#download-and-install)
+- [Quick start](#quick-start)
+- [Features](#features)
+- [Making your firmware monitor-friendly](#making-your-firmware-monitor-friendly)
+- [Re-flashing while the monitor is open](#re-flashing-while-the-monitor-is-open)
+- [Building from source](#building-from-source)
 
-```sh
-tool/bootstrap.sh                                               # macOS
-powershell -ExecutionPolicy Bypass -File tool\bootstrap.ps1     # Windows
+## Download and install
+
+Get the latest build from the
+[**Releases page**](https://github.com/richmr/SerialMonitor/releases/latest).
+
+| Platform | File | Requires |
+|----------|------|----------|
+| macOS | `SerialMonitor-<version>-macos.dmg` | macOS 12 Monterey or later |
+| Windows | `SerialMonitor-<version>-windows-x64.zip` | 64-bit Windows 10 or 11 |
+
+> [!WARNING]
+> **The builds are not code-signed.** Both macOS and Windows will warn you the
+> first time you open the app. This is expected for a free hobby project without
+> an Apple Developer ID or Windows signing certificate. It isn't a sign of
+> tampering, but only download builds from this repository's Releases page. If
+> you'd rather not run an unsigned binary,
+> [build it yourself](#building-from-source).
+
+### macOS
+
+1. Open the `.dmg` and drag **Serial Monitor** into **Applications**.
+2. Open it. macOS will say it *"cannot be opened"* or *"is damaged"*, or that
+   Apple *"could not verify"* it. Click **Done** or **Cancel**, not **Move to
+   Trash**.
+3. Allow it in one of two ways:
+   - **System Settings → Privacy & Security**: scroll down to the message
+     about Serial Monitor, click **Open Anyway**, and confirm.
+   - **Terminal**: remove the quarantine flag macOS puts on downloads:
+     ```sh
+     xattr -dr com.apple.quarantine "/Applications/Serial Monitor.app"
+     ```
+4. Open it again. You only have to do this once for each version you download.
+
+### Windows
+
+1. Right-click the downloaded `.zip`, choose **Properties**, tick **Unblock**
+   and click **OK**. This step is optional, but it prevents most SmartScreen
+   warnings.
+2. Extract the zip anywhere, for example `C:\Tools\SerialMonitor`. Nothing gets
+   installed.
+3. Run `SerialMonitor.exe`. If SmartScreen says *"Windows protected your PC"*,
+   click **More info**, then **Run anyway**.
+
+Keep the `.exe` next to its DLLs and `data` folder. To make a shortcut,
+right-click the `.exe` and choose **Pin to taskbar** or **Send to → Desktop**.
+
+### USB drivers
+
+Boards with a native USB port (ESP32-S2, S3, C3, C6) need no driver. Boards
+with a USB-to-serial chip may need the chip vendor's driver, especially on
+Windows: the
+[CP210x driver](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers)
+or the [CH340 driver](https://www.wch-ic.com/downloads/CH341SER_EXE.html).
+If the port doesn't show up in the list, this is usually why.
+
+## Quick start
+
+1. Plug in your board.
+2. Pick its port at the top left. ESP32-looking ports (Espressif, CP210x,
+   CH340, FTDI) are listed first and one is preselected. The default is 115200
+   baud.
+3. Click **Connect**.
+
+That's all you need. Any existing firmware works, with no changes. Lines are
+grouped by their `[tag]`, ESP-IDF log tag, arduino-esp32 `file:line`, or
+otherwise by their shape (numbers are ignored when comparing, so `Temp: 23.5`
+and `Temp: 23.7` share a row). To make grouping exact and unlock command
+autocomplete, see
+[Making your firmware monitor-friendly](#making-your-firmware-monitor-friendly).
+
+## Features
+
+### One row per message, updated in place
+
+![Rows appearing and their counts climbing as data arrives](docs/images/aggregate.gif)
+
+- New text replaces the old text in a message's row, and the `(count)` in front
+  goes up. Rows stay where they first appeared and flash briefly when they
+  update.
+- Errors are red, warnings are amber, and debug and verbose lines are dimmed.
+- **Filter rows** narrows the view to rows that match what you type.
+- **Hover** over a row to see when it first and last arrived. The clock button
+  in the toolbar shows timestamps on every row.
+- **Right-click** a row to copy or delete it. A deleted row comes back at the
+  bottom if that message arrives again.
+- When the device restarts, rows it hasn't sent since then are dimmed. You can
+  have them cleared instead (⋮ menu → *Clear rows when the device restarts*).
+
+### Click a row to see its history
+
+![The message log for the env row, with temperature graphed](docs/images/detail.png)
+
+Click a row to open a log of every time that message arrived, with timestamps.
+Click any value in the log (here `temp`) to graph it. The chart icon on a row
+is a shortcut that graphs the row's first value. Drag the divider to resize
+the panel.
+
+### Plot several values together
+
+![Floating plot of a sine wave, a triangle ramp and a temperature on a second axis](docs/images/plot.gif)
+
+With a value graphed in the log panel, **Plot in window** opens a floating plot.
+**Add to plot** overlays other values, up to 8.
+
+- A value whose units or range don't fit the left axis gets a right-hand axis.
+  Each legend entry has a button to move it between the **L** and **R** axes,
+  an eye to hide it, and **×** to remove it.
+- Window lengths: 10 s, 30 s, 1 min, 5 min or 20 min.
+- Scroll back in time with the scrollbar or the scroll wheel. The view then
+  stays put while new data keeps arriving. **⏩** returns to live.
+- Drag across the chart to zoom in on a stretch, and press **↶** to go back.
+  Hover for the values at that moment.
+- **Save** stores the plot under the device's name, and it reopens by itself
+  the next time that device connects. Each value keeps its most recent 50,000
+  points.
+
+### Send commands, with autocomplete
+
+![Typing "period sine 500" with autocomplete, then sending it](docs/images/command.gif)
+
+Type a command in the box at the bottom and press **Enter**. If the firmware
+announces its commands (see below), they autocomplete as you type, and the
+picker button on the left lists them all with their arguments and a
+description:
+
+![Command picker listing every command the device announced](docs/images/commands.png)
+
+The monitor asks a protocol-speaking device for its command list on its own
+when it connects and after each restart. For firmware that can't announce its
+commands, load a JSON description from ⋮ → *Load protocol file…*. The line
+ending (LF, CR, CRLF or none) is selectable next to **Send**.
+
+### Everything else
+
+- **Save the stream**: the download button saves every line received and sent,
+  with timestamps. The last 200,000 lines are kept in memory. For longer
+  captures, use ⋮ → *Record serial stream to file…*, which writes each line as
+  it arrives until you stop it.
+- **Restart the board**: the ↻ button pulses EN through RTS, the same way the
+  auto-reset circuit does.
+- **Serial settings**: baud rate is next to the port. DTR and RTS are in the ⋮
+  menu. The defaults are 8N1, no flow control, with DTR and RTS asserted, which
+  leaves the auto-reset circuit idle.
+- **Zoom**: <kbd>Cmd</kbd> <kbd>+</kbd> / <kbd>−</kbd> / <kbd>0</kbd> on macOS,
+  <kbd>Ctrl</kbd> on Windows.
+
+## Making your firmware monitor-friendly
+
+The monitor reads plain text, so your firmware's output still looks normal in
+`pio device monitor` or any other terminal. Following a few conventions lets the
+monitor group lines exactly and know what commands the device takes. These
+conventions are called **SMP** (Serial Monitor Protocol):
+
+```text
+[env] temp=23.5C hum=41%          ← one row per tag; every number can be graphed
+[motor:W] stall detected pos=1200 ← :E / :W / :I / :D / :V sets the level
+[!hello] smp=1 name="BenchTest" fw="0.3.1"
+[!cmd] name=move args="<steps> [speed]" desc="Move the stepper"
 ```
 
-This runs `flutter create` to generate the `macos/` and `windows/` runner
-folders (commit them afterwards) and, on macOS, turns off the App Sandbox so
-the app can open serial devices. Then:
+**[docs/PROTOCOL.md](docs/PROTOCOL.md)** is the full specification.
 
-```sh
-flutter test
-flutter run -d macos      # or: -d windows
+You don't have to format these lines by hand. For Arduino or PlatformIO
+firmware, use the header-only helper in
+[`esp32/SerialMonitorProtocol`](esp32/SerialMonitorProtocol):
+
+```cpp
+#include <smp.h>
+
+void onLed(const char* args) { /* "on" or "off" */ }
+
+void setup() {
+  Serial.begin(115200);
+  smp::begin(Serial, "my-device", "1.0.0");                    // sends [!hello]
+  smp::command("led", "<on|off>", "Switch the LED", onLed);    // announces [!cmd]
+}
+
+void loop() {
+  smp::poll();                                                 // runs commands
+  smp::log("env", "temp=%.1fC hum=%d%%", readTemp(), readHum());
+}
 ```
 
-## Packaged builds
+Add it to a PlatformIO project with
+`lib_deps = symlink:///path/to/SerialMonitor/esp32/SerialMonitorProtocol`, or
+copy `smp.h` into your project.
 
-`tool/package_macos.sh` makes a `.dmg` and `tool\package_windows.ps1` a
-`.zip` that runs on a PC without Flutter, both in `dist/`. The GitHub
-**Windows package** workflow builds the `.zip` when you start it by hand.
-See [docs/PACKAGING.md](docs/PACKAGING.md) for signing, opening unsigned builds and regenerating the app icon.
+Two examples are included:
 
-## ESP32 defaults
-
-115200 baud, 8N1, no flow control, DTR and RTS asserted (which leaves the
-auto-reset circuit idle). USB ports with Espressif, CP210x, CH340 or FTDI
-vendor IDs are listed first and one is preselected. The restart button
-pulses EN through RTS. Baud, DTR and RTS can be changed from the toolbar.
+- [`esp32/examples/basic`](esp32/examples/basic): a minimal sketch.
+- [`esp32/examples/testbench`](esp32/examples/testbench): test firmware that
+  exercises every feature. It sends graphable waves, every log level, and each
+  line format the monitor groups, and it has commands to change all of them. It
+  is what produced the screenshots above. Type `help` once it's connected.
 
 ## Re-flashing while the monitor is open
 
-Three things work together:
+You don't need to close the monitor to upload new firmware.
 
-1. **Auto-reconnect.** If the port disappears or errors (reset, unplug, a
-   native-USB board re-enumerating), the monitor shows "Waiting for device…"
-   and reopens the port as soon as it can, retrying twice a second.
-2. **Upload hook.** A USB-UART bridge (CP210x / CH340) never disappears, and
-   on Windows only one program can hold a COM port, so the uploader needs the
-   monitor to let go. Add this to the firmware project's `platformio.ini`:
+- **Auto-reconnect.** If the port disappears or errors (because of a reset, an
+  unplugged cable or a native-USB board re-enumerating), the monitor shows
+  *Waiting for device…* and reopens the port as soon as it comes back.
+- **PlatformIO upload hook.** A USB-to-serial chip never disappears, and on
+  Windows only one program can hold a COM port, so the uploader needs the
+  monitor to let go of it. Add this line to your firmware project's
+  `platformio.ini`:
 
-   ```ini
-   extra_scripts = post:/path/to/SerialMonitor/tool/pio_smp_hook.py
-   ```
+  ```ini
+  extra_scripts = post:/path/to/SerialMonitor/tool/pio_smp_hook.py
+  ```
 
-   Before `pio run -t upload` it asks the monitor (TCP `127.0.0.1:47800`) to
-   release the port, and afterwards to take it back. If the upload fails and
-   never says "resume", the monitor takes the port back after 120 s.
-3. **Manual release.** The pause button does the same by hand.
+  Before `pio run -t upload`, the hook asks the monitor (over TCP on
+  `127.0.0.1:47800`) to release the port, and afterwards to take it back. If an
+  upload fails partway, the monitor takes the port back on its own after
+  120 s.
+- **By hand.** The ⏸ button releases the port and ▶ takes it back.
 
-Rows not seen since the device restarted are dimmed; "Clear rows when the
-device restarts" in the menu removes them instead.
+## Building from source
 
-## Protocol
+You'll need Flutter 3.22 or newer, plus Xcode on macOS or Visual Studio with
+*Desktop development with C++* on Windows.
 
-[docs/PROTOCOL.md](docs/PROTOCOL.md) defines SMP v1: `[tag] key=value …`
-lines from the device, plain command lines to it, and `[!hello]` / `[!cmd]`
-lines that let the device announce its commands.
-
-`esp32/SerialMonitorProtocol/src/smp.h` is a header-only helper for firmware;
-`esp32/examples/basic` is a PlatformIO example that uses it.
-`esp32/examples/testbench` is test firmware that exercises every feature
-(graphable waves, all log levels, row grouping in each format, commands,
-restarts); load `examples/testbench.smp.json` with it. To use it in
-another project, copy `smp.h` or add
-`lib_deps = symlink:///path/to/SerialMonitor/esp32/SerialMonitorProtocol`.
-
-## Layout
-
-```
-lib/protocol/   line parser, protocol file model          (pure Dart)
-lib/model/      message store: groups, logs, value series
-lib/serial/     session (reconnect logic), libserialport backend, upload-hook server
-lib/ui/         aggregate view, detail panel, chart, command bar, toolbar
-test/           parser, store, session (with a fake port), UI smoke test
-tool/           bootstrap, packaging and icon scripts, PlatformIO upload hook
-esp32/          firmware helper library and example
+```sh
+flutter test
+flutter run -d macos      # or: flutter run -d windows
 ```
 
-## Not in this version
+- First time using Flutter? Start with [docs/MAC_SETUP.md](docs/MAC_SETUP.md)
+  or [docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md).
+- To make your own `.dmg` or `.zip`, see
+  [docs/PACKAGING.md](docs/PACKAGING.md).
+- For how the code is laid out, see
+  [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-Saved settings (port, baud, window), keyboard history in the command box,
-a plot window that can leave the main window (Flutter's multi-window support
-is not yet in a stable release), and matching a re-enumerated
-device that comes back under a different port name.
+Bug reports and pull requests are welcome. When reporting a bug, it helps to
+attach a short stream capture (⋮ → *Save serial stream…*) that shows the
+problem.
