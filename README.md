@@ -1,5 +1,9 @@
 # Serial Monitor
 
+**AI Disclaimer**
+
+This tool was written using Claude Code.  
+
 **A serial monitor for ESP32 development that doesn't scroll everything past you.**
 
 Every *kind* of message gets one row that updates in place, with a count of how
