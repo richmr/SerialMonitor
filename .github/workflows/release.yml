@@ -1,0 +1,117 @@
+# Builds the macOS .dmg and Windows .zip on GitHub's runners and, optionally,
+# attaches them to a draft GitHub release tagged v<version> (from pubspec.yaml).
+# Run it by hand: Actions tab -> Release -> Run workflow.
+#
+# The builds are not code-signed with a Developer ID / Authenticode certificate.
+# The macOS app is ad-hoc signed (CODE_SIGN_IDENTITY "-"), which needs no
+# certificate. See "Releases from GitHub" in docs/PACKAGING.md.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Create a draft GitHub release (off = just build and keep the files as run artifacts)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          version=$(sed -n 's/^version: *\([0-9][0-9.]*\).*/\1/p' pubspec.yaml)
+          [[ -n "$version" ]] || { echo "::error::No version in pubspec.yaml"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Version $version"
+      - name: Check the tag is unused
+        if: inputs.release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${{ steps.v.outputs.version }}"
+          if gh api "repos/${{ github.repository }}/git/ref/tags/$tag" >/dev/null 2>&1 \
+             || gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error::$tag already exists. Bump version: in pubspec.yaml, or delete the old tag/release."
+            exit 1
+          fi
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter test
+      - run: tool\package_windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SerialMonitor-Windows
+          path: dist/*.zip
+          if-no-files-found: error
+
+  macos:
+    needs: version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Tests already run in the Windows job; macOS minutes cost 10x on a private repo.
+      - run: tool/package_macos.sh
+      - name: Show the app's signature and architectures
+        run: |
+          app="build/macos/Build/Products/Release/Serial Monitor.app"
+          codesign -dv "$app" 2>&1 | grep -E 'Signature|TeamIdentifier|Identifier'
+          lipo -archs "$app/Contents/MacOS/"*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SerialMonitor-macOS
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  release:
+    if: inputs.release
+    needs: [version, windows, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: |
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${{ needs.version.outputs.version }}"
+          gh release create "$tag" dist/* \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "Serial Monitor ${{ needs.version.outputs.version }}" \
+            --generate-notes \
+            --draft
+          echo "Draft release $tag created. Review it on the Releases page, then click Publish."
